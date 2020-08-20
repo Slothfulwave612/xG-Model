@@ -59,8 +59,22 @@ if __name__ == '__main__':
     ## path where match files are saved
     path_match='input/Statsbomb/data/matches' 
 
+    ## check for the directory
+    if os.path.isdir('input/simple_dataset') == False:
+        ## make required directories
+        os.mkdir('input/simple_dataset')
+        os.mkdir('input/simple_dataset/all_competitions')
+        os.mkdir('input/simple_dataset/train_test_data')
+        os.mkdir('input/simple_dataset/train_test_data_encoded')
+        os.mkdir('input/simple_dataset/train_test_data_final')
+        os.mkdir('input/simple_dataset/train_test_data_result')
+
+    if os.path.isdir('input/simple_dataset/all_competitions') == False:
+        ## make required directories
+        os.mkdir('input/simple_dataset/all_competitions')
+
     ## path where the dataset will be saved
-    path_save='input/simple_dataset'
+    path_save='input/simple_dataset/all_competitions'
 
     ## get competition data
     comp_df = utils_io.get_competition(path_comp)

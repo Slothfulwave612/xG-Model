@@ -1,11 +1,9 @@
 ## path to train data
-export TRAINING_DATA='input/simple_dataset/train_final.pkl'
+export TRAINING_DATA='input/simple_dataset/train_test_data_final/train_ohe_final.pkl'
+export TEST_DATA='input/simple_dataset/train_test_data_final/test_ohe_final.pkl'
+export SAVE_PATH='input/simple_dataset/train_test_data_result'
 
 ## model to be used
 export MODEL=$1
 
-FOLD=0 python -m src.train
-FOLD=1 python -m src.train
-FOLD=2 python -m src.train
-FOLD=3 python -m src.train
-FOLD=4 python -m src.train
+python -m src.train

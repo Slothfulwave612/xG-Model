@@ -8,49 +8,56 @@ Python module for training models.
 import os
 import pandas as pd
 import joblib
+from sklearn import preprocessing
 from sklearn import metrics
 
 from . import dispatcher
 
 ## get values from script file
 TRAINING_DATA = os.environ.get('TRAINING_DATA')
-FOLD = int(os.environ.get('FOLD'))
+TEST_DATA = os.environ.get('TEST_DATA')
+SAVE_PATH = os.environ.get('SAVE_PATH')
 MODEL = os.environ.get('MODEL')
-
-## for a given fold-number we have defined fold-number for train-data
-## e.g. if 0 is given as a fold number, then rows with folds 1, 2, 3 and 4 will be treated as train-data
-## and rows with folds 0 is treated as validation-data
-FOLD_MAPPING = {
-    0: [1, 2, 3, 4],
-    1: [0, 2, 3, 4],
-    2: [0, 1, 3, 4],
-    3: [0, 1, 2, 4],
-    4: [0, 1, 2, 3]
-}
 
 if __name__ == '__main__':
     ## read in the datsets
-    df = pd.read_pickle(TRAINING_DATA)
+    train_df = pd.read_pickle(TRAINING_DATA)
+    test_df = pd.read_pickle(TEST_DATA)
 
-    ## fetch train and valid data   
-    train_df = df[df['kfold'].isin(FOLD_MAPPING.get(FOLD))].reset_index(drop=True)
-    valid_df = df[df['kfold'] == FOLD].reset_index(drop=True)
+    ## initialize the min-max-scaler
+    scaler_1 = preprocessing.MinMaxScaler()   ## for train
+    scaler_2 = preprocessing.MinMaxScaler()   ## for test
 
-    ## fetch target values for train and validation data
+    ## scale the values from train and test dataframe
+    x_train = scaler_1.fit_transform(train_df.drop(['shot_statsbomb_xg', 'player_name', 'target'], axis=1))
+    x_test = scaler_2.fit_transform(test_df.drop(['shot_statsbomb_xg', 'player_name', 'target'], axis=1))
+
+    ## fetch target values for train and test dataframe
     y_train = train_df['target'].values
-    y_valid = valid_df['target'].values
-
-    ## drop columns
-    train_df.drop(['target', 'kfold', 'shot_statsbomb_xg', 'player_name'], axis=1, inplace=True)
-    valid_df.drop(['target', 'kfold', 'shot_statsbomb_xg', 'player_name'], axis=1, inplace=True)
-
+    y_test = test_df['target'].values
+   
     ## train the model
     clf = dispatcher.MODELS[MODEL]
-    clf.fit(train_df, y_train)
-    preds = clf.predict_proba(valid_df)[:, 1]
+    clf.fit(x_train, y_train)
+
+    ## predict values for train and test set
+    preds_train = clf.predict_proba(x_train)[:, 1]
+    preds_test = clf.predict_proba(x_test)[:, 1]
+
+    ## add the predicted values
+    train_df['pred_' + MODEL] = preds_train
+    test_df['pred_' + MODEL] = preds_test
 
     ## print auc_roc_score
-    print(metrics.roc_auc_score(y_valid, preds))
+    print(f'ROC-AUC Score on train-dataset: {metrics.roc_auc_score(y_train, preds_train)}')
+    print(f'ROC-AUC Score on test-dataset: {metrics.roc_auc_score(y_test, preds_test)}')
 
-    ## save the model
-    joblib.dump(clf, f'models/simple_models/{MODEL}_{FOLD}.pkl')
+    ## check for directory
+    if os.path.isdir(SAVE_PATH) == False:
+        ## make directory
+        os.mkdir(SAVE_PATH)
+
+    ## save the dataset and model
+    train_df.to_pickle(SAVE_PATH + '/train_preds_' + MODEL + '.pkl')
+    test_df.to_pickle(SAVE_PATH + '/test_preds_' + MODEL + '.pkl')
+    joblib.dump(clf, f'models/simple_models/{MODEL}.pkl')

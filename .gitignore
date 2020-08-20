@@ -142,4 +142,7 @@ dmypy.json
 *.pdf
 *.json
 
+# my-files
+*.ipynb
+
 # End of https://www.toptal.com/developers/gitignore/api/python

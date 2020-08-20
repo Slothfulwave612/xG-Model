@@ -233,20 +233,36 @@ def body_part(value):
     else:
         return value
 
+def change_dims(old_value, old_min, old_max, new_min, new_max):
+    '''
+    Function for changing the coordinates to our pitch dimensions.
+
+    Arguments:
+        old_value, old_min, old_max, new_min, new_max -- float values.
+
+    Returns:
+        new_value -- float value(the coordinate value either x or y).
+    '''
+    ## calculate the value
+    new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
+
+    return new_value
 
 def coordinates_x(value):
     '''
     Return x coordinate
     '''
-    return value[0]
+    value_x = change_dims(value[0], 0, 120, 0, 104)
+    return value_x
 
 def coordinates_y(value):
     '''
     Return 80 - x coordinate
     '''
-    return 80 - value[1]    
+    value_y = change_dims(80- value[1], 0, 80, 0, 68)
+    return value_y
 
-def distance_bw_coordinates(x1, y1, x2=120.0, y2=40.0):
+def distance_bw_coordinates(x1, y1, x2=104.0, y2=34.0):
     '''
     Function for calculating the distance between shot location 
     and the goal post.
@@ -262,7 +278,7 @@ def distance_bw_coordinates(x1, y1, x2=120.0, y2=40.0):
     
     return distance
 
-def post_angle(x, y, g1_x=120, g1_y=36, g2_x=120, g2_y=44):
+def post_angle(x, y, g1_x=104, g1_y=30.34, g2_x=104, g2_y=37.66):
     '''
     Function to calculate the post angle.
     
@@ -275,7 +291,7 @@ def post_angle(x, y, g1_x=120, g1_y=36, g2_x=120, g2_y=44):
     Returns:
     angle -- float, the angle in degrees.
     '''
-    if x == 120:
+    if x == 104:
         return 0
     
     ## calculating the three sides of the triangle.
@@ -285,10 +301,70 @@ def post_angle(x, y, g1_x=120, g1_y=36, g2_x=120, g2_y=44):
     
     ## using cosine law
     value = ((A_dis**2) + (B_dis**2) - (C_dis**2)) / (2 * A_dis * B_dis)
-    
+
     angle = np.degrees(np.arccos(value))
     
     return angle    
+
+def create_result_df(df, length, col):
+    '''
+    Function to create a result dataframe(statsbomb_xg vs predicted_xg).
+
+    Arguments:
+        df -- pandas dataframe.
+        length -- int, length of the dataframe.
+        col -- str, column name for predicted xG value.
+
+    Returns:
+        result -- pandas dataframe containing statsbomb_xg and predicted_xg as columns.
+    '''
+    ## fetch all the player names
+    players = df.loc[df['target'] == 1, 'player_name'].value_counts()[:length].index
+
+    ## init a dictionary
+    result_dict = {
+        'player_name': [],
+        'shots': [],
+        'goals': [],
+        'statsbomb_xg': [],
+        'predicted_xg': []
+    }
+
+    ## calculate required values
+    for player in players:
+
+        ## total number of shots taken by a player
+        shots = len(df.loc[(df['player_name'] == player)])
+        
+        ## total number of goals scored by a player
+        goals = len(df.loc[
+            (df['player_name'] == player) &
+            (df['target'] == 1)
+        ])
+        
+        ## aggregated statsbomb-xG-value for a player
+        stats_xg = df.loc[
+            (df['player_name'] == player),
+            'shot_statsbomb_xg'
+        ].sum()
+        
+        ## aggregated predicted-xG-value for a player
+        pred_xg = df.loc[
+            (df['player_name'] == player),
+            col
+        ].sum()
+        
+        ## append result to result_dict
+        result_dict['player_name'].append(player)
+        result_dict['shots'].append(shots)
+        result_dict['goals'].append(goals)
+        result_dict['statsbomb_xg'].append(stats_xg)
+        result_dict['predicted_xg'].append(pred_xg)
+        
+    ## create pandas dataframe
+    result = pd.DataFrame(result_dict).sort_values(by='goals', ascending=False).reset_index(drop=True)
+
+    return result
 
 # def make_event_df(x):
 #     '''

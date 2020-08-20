@@ -9,6 +9,6 @@ from sklearn import linear_model
 from sklearn import ensemble
 
 MODELS = {
-    'log_regg': linear_model.LogisticRegression(n_jobs=-1),
+    'log_regg': linear_model.LogisticRegression(n_jobs=-1, solver='lbfgs', max_iter=200),
     'random_forest': ensemble.RandomForestClassifier(n_estimators=200, n_jobs=-1, verbose=2)
 }

@@ -5,6 +5,7 @@ Python module for encoding categorical variable.
 '''
 
 ## import necessary package/module
+import os
 import pandas as pd
 from sklearn import preprocessing
 
@@ -146,17 +147,17 @@ class CategoricalFeatures:
 
 if __name__ == "__main__":
     ## path where data is stored
-    path = 'input/simple_dataset'
+    path = 'input/simple_dataset/train_test_data'
+
+    ## path where dataset will be stored
+    path_save = 'input/simple_dataset/train_test_data_encoded'
 
     ## read in the data
-    train_df = pd.read_pickle(path+'/train_folds.pkl')
+    train_df = pd.read_pickle(path+'/train_df.pkl')
     test_df = pd.read_pickle(path+'/test_df.pkl')
 
     ## length of train-dataframe
     len_train = len(train_df)
-
-    ## make kfold column for test_df
-    test_df['kfold'] = -1
 
     ## concatenate the two dataframes
     full_df = pd.concat([train_df, test_df]).reset_index(drop=True)
@@ -177,9 +178,11 @@ if __name__ == "__main__":
     train_df = full_df.loc[:len_train-1, :].reset_index(drop=True)
     test_df = full_df.loc[len_train:, :].reset_index(drop=True)
 
-    ## drop kfold column from test_df
-    test_df.drop('kfold', inplace=True, axis=1)
+    ## check for directory
+    if os.path.isdir(path_save) == False:
+        ## make directory
+        os.mkdir(path_save)
 
     ## save the dataframes
-    train_df.to_pickle(path+'/train_trans.pkl')
-    test_df.to_pickle(path+'/test_trans.pkl')
+    train_df.to_pickle(path_save+'/train_ohe.pkl')
+    test_df.to_pickle(path_save+'/test_ohe.pkl')

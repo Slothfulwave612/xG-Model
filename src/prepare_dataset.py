@@ -5,16 +5,18 @@ Python module for preparing the dataset before training and testing.
 '''
 
 ## import necessary packages/modules
+import os
 import pandas as pd
 
 from . import utils_io
 
-def make_dataframe(path, name, drop_cols, filename):
+def make_dataframe(path, path_save, name, drop_cols, filename):
     '''
     Function to making the required dataframe before training and testing.
 
     Arguments:
         path -- str, where the dataframe is stored.
+        path_save -- str, where the new dataframe will be stored.
         name -- str, name of the dataframe with added extension.
         drop_cols -- list of columns to be dropped.
         filename -- str, name of the file + .pkl extension.
@@ -34,19 +36,20 @@ def make_dataframe(path, name, drop_cols, filename):
     df['angle'] = df.apply(lambda x: utils_io.post_angle(x['x'], x['y']), axis=1)
 
     ## save the dataframe
-    df.to_pickle(path+'/'+filename)
+    df.to_pickle(path_save+'/'+filename)
 
 if __name__ == '__main__':
     ## path and file name
-    path = 'input/simple_dataset'
-    name_1 = 'train_trans.pkl'
-    filename_1 = 'train_final.pkl'
-    name_2 = 'test_trans.pkl'
-    filename_2 = 'test_final.pkl'
+    path = 'input/simple_dataset/train_test_data_encoded'
+    path_save = 'input/simple_dataset/train_test_data_final'
+    name_1 = 'train_ohe.pkl'
+    filename_1 = 'train_ohe_final.pkl'
+    name_2 = 'test_ohe.pkl'
+    filename_2 = 'test_ohe_final.pkl'
 
     ## drop columns
     drop_cols = ['location', 'shot_type_name', 'body_part', 'x0_Kick Off', 'x1_Other']
 
     ## make final train and test dataframes
-    make_dataframe(path, name_1, drop_cols, filename_1)
-    make_dataframe(path, name_2, drop_cols, filename_2)
+    make_dataframe(path, path_save, name_1, drop_cols, filename_1)
+    make_dataframe(path, path_save, name_2, drop_cols, filename_2)
