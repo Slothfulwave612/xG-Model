@@ -6,13 +6,13 @@ Python module for making train and test data.
 The train dataset will include shot information from:
                 1. All La Liga Matches
                 2. All UEFA Champions League Final Matches
-                3. All FAWSL Matches
-                4. All Women World Cup(2019) Matches
+                3. All Mens World Cup(2018) Matches
+                4. All Premier League Matches
                 5. All NWSL(2018) Matches
 
 The test dataset will include shot information from :
-                1. All Mens World Cup(2018) Matches
-                2. All Premier League Matches
+                1. All FAWSL Matches
+                2. All Women World Cup(2019) Matches
 '''
 
 ## import necessary modules/packages
@@ -57,6 +57,10 @@ def make_train_test(path, path_save):
         ]
     )
 
+    ## randomly shuffle both the datasets
+    train_df = train_df.sample(frac=1).reset_index(drop=True)
+    test_df = test_df.sample(frac=1).reset_index(drop=True)
+
     ## check for directory
     if os.path.isdir(path_save) == False:
         ## make directory
@@ -70,10 +74,10 @@ def make_train_test(path, path_save):
 
 if __name__ == '__main__':
     ## path where the shot dataset is present
-    path_data = 'input/simple_dataset/all_competitions'
+    path_data = 'input/basic_dataset/all_competitions'
 
     ## path where the new dataset is saved
-    path_save = 'input/simple_dataset/train_test_data'
+    path_save = 'input/basic_dataset/train_test_data'
 
     ## make split
     make_train_test(path=path_data, path_save=path_save)

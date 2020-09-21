@@ -10,6 +10,7 @@ from matplotlib import cm
 from matplotlib import colors
 import seaborn as sns
 import dataframe_image as dfi
+import utils_io as uio
 
 class Pitch:
     '''
@@ -160,7 +161,8 @@ class Pitch:
             fill_rect = [-5, -10]
         
         ## create subplot
-        fig, ax = plt.subplots(figsize=(sx, sy))
+        fig, ax = plt.subplots(figsize=(sx, sy), facecolor=self.pitch_color)
+        ax.set_facecolor(self.pitch_color)
     
         ## plot outfield lines
         ax.plot(pitch_dims_x, pitch_dims_y, color=self.line_color, zorder=zorder_line)
@@ -222,18 +224,28 @@ class Pitch:
         
         return fig, ax
 
-def xG_plot(df, path, col):
-    '''
-    Function for making xG plot.
+def xG_plot(df, col, title, path=None):
+    """
+    Function for making an xG plot.
 
-    Arguments:
-        df -- pandas dataframe.
-        path -- str, path where image will be saved.
-        col -- str, the column name value to be plotted.
-    '''
+    Args:
+        df (pandas.DataFrame): required dataframe
+        col (str): xG value column name.
+        title (str): title of the plot.
+        path (str, optional): path where file will be saved. Defaults to None.
+    """    
     ## create pitchmap
     pitch_train_real = Pitch(line_color='red', figsize_x=20.8, figsize_y=13.6)
     fig, ax = pitch_train_real.create_pitch()
+
+    ax.text(
+        52, 69.5,
+        title,
+        color="#121212",
+        fontsize=25,
+        fontfamily="Liberation Serif",
+        ha="center", va="center"
+    )
 
     ## some variable for making cmap
     start = 0.0
@@ -246,31 +258,53 @@ def xG_plot(df, path, col):
     cmap = colors.ListedColormap(color)
 
     ## make scatterplot
-    ax.scatter(x=df['x'], y=df['y'], c=df[col], 
+    ax.scatter(x=df['x'], y=df['y'], c=df[col], s=15,
                         marker='o', cmap=cmap, ec='#000000', lw=0.3, zorder=4)
 
     ## add colorbar
-    fraction = 0.1
+    fraction = 0.029
     norm = mpl.colors.Normalize(vmin=0, vmax=1)
     ax.figure.colorbar(
                 mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-                ax=ax, pad=0, extend='both', fraction=fraction)
+                ax=ax, pad=0, fraction=fraction)
+
+    ## name to the color bar
+    ax.text(
+        111, -2,
+        "xG Value",
+        color="#121212",
+        fontsize=25,
+        fontweight="bold",
+        fontfamily="Liberation Serif",
+        ha="center", va="center"
+    )                
+
+    ## add credits
+    ax.text(
+        0.2, 0.55,
+        "viz created by: @slothfulwave612",
+        color="#121212",
+        fontsize=10,
+        fontfamily="Liberation Serif",
+        ha="left", va="center"
+    )
 
     ## save figure
-    fig.savefig(path, dpi=500, bbox_inches='tight')
+    if path:
+        fig.savefig(path, dpi=500, bbox_inches='tight')
 
 def plot_dataframe(df, path):
-    '''
-    Function to save the dataframe as png.
+    """
+    Function to make dataframe image.
 
-    Arguments:
-        df -- pandas dataframe.
-        path -- str, path where the plot will be saved.
-    '''
-    df_styled = df.style.background_gradient()
-    dfi.export(df_styled, path, table_conversion='chrome')
+    Args:
+        df (pandas.DataFrame): dataframe containing goals and xG-values
+        path (str, optional): path where dataframe image will be saved. Defaults to None.
+    """    
+    df_styled = df.style.hide_index()
+    dfi.export(df_styled, path, table_conversion='chrome', fontsize=15)
 
-def plot_target(df, path):
+def plot_target(df, path=None):
     '''
     Function for making countplot for target column.
 
@@ -294,4 +328,5 @@ def plot_target(df, path):
     ax.set_title('Countplot: Goals v No-Goals')
 
     ## save figure
-    fig.savefig(path, dpi=500, bbox_inches='tight')
+    if path:
+        fig.savefig(path, dpi=500, bbox_inches='tight')

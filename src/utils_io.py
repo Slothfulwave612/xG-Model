@@ -12,7 +12,7 @@ import json
 import math
 import multiprocessing
 from tqdm.auto import tqdm, trange
-from joblib import Parallel, delayed
+import statsmodels.api as sm
 
 def get_competition(path):
     '''
@@ -131,7 +131,7 @@ def make_event_df(match_id, path):
     
     return df
 
-def full_season_events(match_df, match_ids, path, comp_name=None, leave=True):
+def full_season_events(match_df, match_ids, path, comp_name=None, leave=True, shot=True):
     '''
     Function to make event dataframe for a full season.
     
@@ -160,8 +160,11 @@ def full_season_events(match_df, match_ids, path, comp_name=None, leave=True):
 
         temp_df = make_event_df(match_id, temp_path)
         event_df = pd.concat([event_df, temp_df])
-        
-    return event_df.loc[event_df['type_name'] == 'Shot']     
+    
+    if shot:
+        return event_df.loc[event_df['type_name'] == 'Shot']     
+    else:
+        return event_df
 
 def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season):
     '''
@@ -228,8 +231,8 @@ def body_part(value):
                         Foot -- if it is right/left foot,
                         Other -- if any other body part
     '''
-    if value == 'Left Foot' or value == 'Right Foot':
-        return 'Foot'
+    if value == "Left Foot" or value == "Right Foot":
+        return "Foot"
     else:
         return value
 
@@ -291,7 +294,10 @@ def post_angle(x, y, g1_x=104, g1_y=30.34, g2_x=104, g2_y=37.66):
     Returns:
     angle -- float, the angle in degrees.
     '''
-    if x == 104:
+    if x == 104 and (30.34 <= y <= 37.66):
+        return 180
+
+    if x == 104 and (y > 37.66 or y < 30.34):
         return 0
     
     ## calculating the three sides of the triangle.
@@ -304,9 +310,28 @@ def post_angle(x, y, g1_x=104, g1_y=30.34, g2_x=104, g2_y=37.66):
 
     angle = np.degrees(np.arccos(value))
     
-    return angle    
+    return angle 
 
-def create_result_df(df, length, col):
+def post_vertical_angle(x, y):
+    """
+    Function to calculate vertical-post angle.
+
+    Args:
+        x (float)): x-coordinate value
+        y (float): y-coordinate value
+
+    Returns:
+        float -- vertical-post angle.
+    """  
+    ## calculate distance
+    dis = distance_bw_coordinates(x, y)
+
+    if dis == 0:
+        return 90
+    
+    return np.degrees(np.arctan(2.4 / dis))
+
+def create_result_df(df, length, col):    
     '''
     Function to create a result dataframe(statsbomb_xg vs predicted_xg).
 
@@ -366,85 +391,68 @@ def create_result_df(df, length, col):
 
     return result
 
-# def make_event_df(x):
-#     '''
-#     Function for making event dataframe.
-    
-#     Argument:
-#         match_id -- int, the required match id for which event data will be constructed.
-#         path -- str, path to .json file containing event data.
-    
-#     Returns:
-#         df -- pandas dataframe, the event dataframe for the particular match.
-#     '''
-#     path = x[1]
-#     ## read in the json file
-#     event_json = json.load(open(path, encoding='utf-8'))
-    
-#     ## normalize the json data
-#     df = json_normalize(event_json, sep='_')
-    
-#     return df
+def get_indices(width, height, xpartition, ypartition, xinput, yinput):
+    """
+    Function to get the indices for grid.
 
+    Args:
+        width (float): width of the pitch.
+        height (float): height of the pitch.
+        xpartition (int): number of rows in a grid
+        ypartition (int): number of colimns in a grid.
+        xinput (float): x-coordinate location.
+        yinput (float): y-coordinate location.
 
-# def full_season_events(comp_name, match_df, match_ids, path):
-#     event_df = pd.DataFrame()
+    Returns:
+        tuple: containing indices for the grid.
+    """    
+    ## calculate number of partitions in x and y
+    x_step = width / xpartition
+    y_step = height / ypartition
 
-#     with multiprocessing.Pool() as p:
-#         # Generate job tuples
-#         jobs = [(match_id, path + f"/{match_id}.json") for match_id in match_ids]
-#         # Run & get results from multiprocessing generator
+    ## calculate x and y values
+    x = math.ceil((xinput if xinput > 0 else 0.5) / x_step) # handle border cases as well
+    y = math.ceil((yinput if yinput > 0 else 0.5) / y_step)  # handle border cases as well
 
-#         for temp_df in tqdm(
-#             p.imap_unordered(make_event_df, jobs, chunksize=10),
-#             total=len(jobs),
-#             desc=f"Making Event Data For {comp_name}",
-#             leave=False
-#         ):
-#             event_df = pd.concat([event_df, temp_df], sort=True)
+    return (
+        ypartition - y, x - 1
+    )
 
-#     return event_df    
+def get_stats(x_val, y_val):
+    """
+    Function to train model using statsmodel api.
 
-# def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season):
-#     '''
-#     Function for making event dataframe having multile seasons 
-#     for the same competition.
-    
-#     Arguments:
-#         comp_name -- str, competition name + season 
-#         comp_id -- int, competition id.
-#         season_ids -- list, list containing season ids.
-#         path_match -- str, path to .json file containing match data.
-#         path_season -- str, path to directory where .json file is listed.
-#                        e.g. '../input/Statsbomb/data/events'
-    
-#     Returns:
-#         event_df -- pandas dataframe, containing event of multiple seasons.
-#     '''
-#     ## init an empty dataframe
-#     event_df = pd.DataFrame()
-    
-#     ## making the event-dataframe
-#     for season_id in tqdm(season_ids, desc=f'Grabbing data for {comp_name}', leave=True):
-        
-#         ## add season id to path-match
-#         team_path_match = path_match + f'/{season_id}.json'
+    Args:
+        x_val (pandas.DataFrame): containing features.
+        y_val (numpy.ndarray): containing targets.
 
-#         ## make a match dataframe for a particular season
-#         match_df = get_matches(comp_id, season_id, team_path_match)
-    
-#         ## list all the match ids
-#         match_ids = list(match_df['match_id'].unique())
-        
-#         # comp_name_ = match_df['competition_name'].unique()[0] + '-' + match_df['season_name'].unique()[0]
+    Returns:
+        statsmodels.iolib.summary.Summary: summary about our model
+    """    
+    ## train logistic model
+    log_reg = sm.Logit(y_val, x_val).fit(maxiter=1000)
 
-#         ## create the event dataframe for the whole season
-#         temp_df = full_season_events(comp_name, match_df, match_ids, path_season)
+    return log_reg.summary()
 
-#         ## concat the dataframes
-#         event_df = pd.concat([event_df, temp_df], sort=True)
-    
-#     ## make final dataframe
-#     event_df = event_df.reset_index(drop=True)
-    
-#     return event_df           
+def make_df(df, cols, rows=25):
+    """
+    Function to make the required dataframe.
+
+    Args:
+        df (pandas.DataFrame))
+        cols (list): the required columns.
+        rows (int, optional): First rows. Defaults to 25.
+    """    
+    ## fetch columns
+    df = df[cols]
+
+    ## a new dataframe
+    new_df = df.groupby(by="player_name").sum().reset_index().sort_values("target", ascending=False).reset_index(drop=True)
+
+    ## rename target column
+    new_df = new_df.rename({"target": "goals_scored"}, axis=1)
+
+    ## fetch first few rows
+    first_few = new_df.head(rows)
+
+    return first_few

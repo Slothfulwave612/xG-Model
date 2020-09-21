@@ -5,9 +5,13 @@ Python module for encoding categorical variable.
 '''
 
 ## import necessary package/module
+import sys
 import os
 import pandas as pd
 from sklearn import preprocessing
+
+## fetch model
+CAT_TYPE = str(sys.argv[1])
 
 class CategoricalFeatures:
     '''
@@ -54,10 +58,10 @@ class CategoricalFeatures:
             lbl = preprocessing.LabelEncoder()
 
             ## fit
-            lbl.fit(self.dataframe[cols].values)
+            lbl.fit(self.output_df[cols].values)
 
             ## transform
-            self.output_df.loc[:, cols] = lbl.transform(self.dataframe[cols].values)
+            self.output_df.loc[:, cols] = lbl.transform(self.output_df[cols].values)
 
             ## save label_encoders
             self.label_encoders[cols] = lbl
@@ -147,10 +151,10 @@ class CategoricalFeatures:
 
 if __name__ == "__main__":
     ## path where data is stored
-    path = 'input/simple_dataset/train_test_data'
+    path = 'input/basic_dataset/train_test_data'
 
     ## path where dataset will be stored
-    path_save = 'input/simple_dataset/train_test_data_encoded'
+    path_save = 'input/basic_dataset/train_test_data_encoded'
 
     ## read in the data
     train_df = pd.read_pickle(path+'/train_df.pkl')
@@ -166,13 +170,21 @@ if __name__ == "__main__":
     cols = ['shot_type_name', 'body_part']
 
     ## create object for Categorical Features
-    cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='ohe')
+    if CAT_TYPE == "ohe":
+        ## one hot encoding
+        cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='ohe')
+    
+        ## encoding on data
+        trans_df = cat_feats.fit_tranform()
 
-    ## encoding on train data
-    trans_df = cat_feats.fit_tranform()
+        ## concate trans_df and full_df
+        full_df = pd.concat([full_df, trans_df], axis=1)
 
-    ## concate trans_df and full_df
-    full_df = pd.concat([full_df, trans_df], axis=1)
+    elif CAT_TYPE == "label":
+        ## label encoding
+        cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='label')
+
+        full_df = cat_feats.fit_tranform()
 
     ## train and test df
     train_df = full_df.loc[:len_train-1, :].reset_index(drop=True)
@@ -184,5 +196,9 @@ if __name__ == "__main__":
         os.mkdir(path_save)
 
     ## save the dataframes
-    train_df.to_pickle(path_save+'/train_ohe.pkl')
-    test_df.to_pickle(path_save+'/test_ohe.pkl')
+    if CAT_TYPE == "ohe":
+        train_df.to_pickle(path_save+'/train_ohe.pkl')
+        test_df.to_pickle(path_save+'/test_ohe.pkl')
+    elif CAT_TYPE == "label":
+        train_df.to_pickle(path_save+'/train_label.pkl')
+        test_df.to_pickle(path_save+'/test_label.pkl')

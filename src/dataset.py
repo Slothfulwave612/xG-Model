@@ -47,6 +47,21 @@ def simple_dataset(comp_name, comp_id, season_ids, path_season, path_match, path
     ## drop shot_outcome_name and shot_body_part_name column
     shot_df.drop(['shot_outcome_name', 'shot_body_part_name'], axis=1, inplace=True)
 
+    ## filter out shots from penalties, corners and Kick Off
+    shot_df = shot_df.loc[ 
+        (shot_df["shot_type_name"] != "Penalty") &
+        (shot_df["shot_type_name"] != "Corner")  &
+        (shot_df["shot_type_name"] != "Kick Off")
+    ]
+
+    ## add x and y coordinate columns
+    shot_df['x'] = shot_df['location'].apply(utils_io.coordinates_x)
+    shot_df['y'] = shot_df['location'].apply(utils_io.coordinates_y)
+
+    ## drop location column
+    shot_df.drop('location', inplace=True, axis=1)
+
+    ## save the dataset
     shot_df.to_pickle(f'{path_save}/{filename}')
 
 if __name__ == '__main__':
@@ -60,21 +75,21 @@ if __name__ == '__main__':
     path_match='input/Statsbomb/data/matches' 
 
     ## check for the directory
-    if os.path.isdir('input/simple_dataset') == False:
+    if os.path.isdir('input/basic_dataset') == False:
         ## make required directories
-        os.mkdir('input/simple_dataset')
-        os.mkdir('input/simple_dataset/all_competitions')
-        os.mkdir('input/simple_dataset/train_test_data')
-        os.mkdir('input/simple_dataset/train_test_data_encoded')
-        os.mkdir('input/simple_dataset/train_test_data_final')
-        os.mkdir('input/simple_dataset/train_test_data_result')
+        os.mkdir('input/basic_dataset')
+        os.mkdir('input/basic_dataset/all_competitions')
+        os.mkdir('input/basic_dataset/train_test_data')
+        os.mkdir('input/basic_dataset/train_test_data_encoded')
+        os.mkdir('input/basic_dataset/train_test_data_final')
+        os.mkdir('input/basic_dataset/train_test_data_result')
 
-    if os.path.isdir('input/simple_dataset/all_competitions') == False:
+    if os.path.isdir('input/basic_dataset/all_competitions') == False:
         ## make required directories
-        os.mkdir('input/simple_dataset/all_competitions')
+        os.mkdir('input/basic_dataset/all_competitions')
 
     ## path where the dataset will be saved
-    path_save='input/simple_dataset/all_competitions'
+    path_save='input/basic_dataset/all_competitions'
 
     ## get competition data
     comp_df = utils_io.get_competition(path_comp)
