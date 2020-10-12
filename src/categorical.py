@@ -7,18 +7,20 @@ Python module for encoding categorical variable.
 ## import necessary package/module
 import sys
 import os
+import joblib
 import pandas as pd
 from sklearn import preprocessing
 
 ## fetch model
-CAT_TYPE = str(sys.argv[1])
+TYPE = str(sys.argv[1])
+CAT_TYPE = str(sys.argv[2])
 
 class CategoricalFeatures:
     '''
     class for encoding categorical variable.
     '''
 
-    def __init__(self, df, categorical_features, encoding_type, handle_na=False):
+    def __init__(self, df, categorical_features, encoding_type, path):
         '''
         Function to initialize object.
         
@@ -27,19 +29,14 @@ class CategoricalFeatures:
             df -- pandas dataframe.
             categorical_features -- list of categorical column names.
             encoding_type -- str, label-encoding or one-hot-encoding.
-            handle_na -- bool, True: to handle NaN values.
-                               False: otherwise.
+            path 
         '''
         self.dataframe = df
         self.cat_feats = categorical_features
         self.enc_type = encoding_type
-        self.handle_na = handle_na
         self.label_encoders = dict()
         self.ohe = None
-
-        if self.handle_na:
-            for cols in self.cat_feats:
-                self.dataframe.loc[: cols] = self.dataframe.loc[: cols].astype(str).fillna('-999999')
+        self.path = path
         
         self.output_df = self.dataframe.copy(deep=True)
 
@@ -65,6 +62,14 @@ class CategoricalFeatures:
 
             ## save label_encoders
             self.label_encoders[cols] = lbl
+
+        ## check for directory
+        if os.path.isdir(self.path) == False:
+            ## make directory
+            os.mkdir(self.path)
+
+        ## save label encoding
+        joblib.dump(self.label_encoders, self.path + "/" + self.enc_type + ".pkl")
 
         return self.output_df
     
@@ -93,6 +98,14 @@ class CategoricalFeatures:
         ## make dataframe
         temp_df = pd.DataFrame(temp.toarray().astype(int))
         temp_df.columns = ohe.get_feature_names()
+
+        ## check for directory
+        if os.path.isdir(self.path) == False:
+            ## make directory
+            os.mkdir(self.path)
+
+        ## save one hot encoding
+        joblib.dump(self.ohe, self.path + "/" + self.enc_type + ".pkl")
 
         return temp_df
 
@@ -126,11 +139,6 @@ class CategoricalFeatures:
         Returns:
             dataframe -- pandas dataframe.
         '''
-        if self.handle_na == True:
-            ## fill nan values
-            for cols in self.cat_feats:
-                dataframe.loc[:, cols] = dataframe.loc[:, cols].astype(str).fillna('-999999')
-
         if self.enc_type == 'label':
             for c, lbl in self.label_encoders.items():
                 dataframe.loc[:, c] = lbl.transform(dataframe[c].values)
@@ -151,10 +159,21 @@ class CategoricalFeatures:
 
 if __name__ == "__main__":
     ## path where data is stored
-    path = 'input/basic_dataset/train_test_data'
+    path = f"input/{TYPE}_dataset/train_test_data"
 
     ## path where dataset will be stored
-    path_save = 'input/basic_dataset/train_test_data_encoded'
+    path_save = f"input/{TYPE}_dataset/train_test_data_encoded"
+
+    ## path where encodings will be saved
+    path_enc = f"models/{TYPE}_models"
+
+    if TYPE == "basic":
+        ## categorical columns
+        cols = ["shot_type_name", "body_part"]
+    
+    elif TYPE == "intermediate":
+        ## categorical columns
+        cols = ["shot_type_name", "shot_body_part_name", "pass_type"]
 
     ## read in the data
     train_df = pd.read_pickle(path+'/train_df.pkl')
@@ -166,13 +185,10 @@ if __name__ == "__main__":
     ## concatenate the two dataframes
     full_df = pd.concat([train_df, test_df]).reset_index(drop=True)
 
-    ## categorical columns
-    cols = ['shot_type_name', 'body_part']
-
     ## create object for Categorical Features
     if CAT_TYPE == "ohe":
         ## one hot encoding
-        cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='ohe')
+        cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='ohe', path=path_enc)
     
         ## encoding on data
         trans_df = cat_feats.fit_tranform()
@@ -180,9 +196,12 @@ if __name__ == "__main__":
         ## concate trans_df and full_df
         full_df = pd.concat([full_df, trans_df], axis=1)
 
+        ## drop unnecessary columns
+        full_df.drop(cols, axis=1, inplace=True)
+
     elif CAT_TYPE == "label":
         ## label encoding
-        cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='label')
+        cat_feats = CategoricalFeatures(full_df, categorical_features=cols, encoding_type='label', path=path_enc)
 
         full_df = cat_feats.fit_tranform()
 

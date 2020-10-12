@@ -304,6 +304,25 @@ def plot_dataframe(df, path):
     df_styled = df.style.hide_index()
     dfi.export(df_styled, path, table_conversion='chrome', fontsize=15)
 
+
+def plot_correlation(df, numerical_feature_columns, target, filename=None):
+    """[summary]
+
+    Args:
+        df ([type]): [description]
+        numerical_feature_columns ([type]): [description]
+        target ([type]): [description]
+        filename ([type], optional): [description]. Defaults to None.
+    """    
+    cm = df[numerical_feature_columns].corr()
+    fig, ax = plt.subplots(figsize=(16,12))
+    sns.heatmap(cm, annot=True, cmap = 'viridis')
+    
+    if filename:
+        fig.savefig(filename, dpi=500, bbox_inches="tight")
+    
+    return fig, ax
+
 def plot_target(df, path=None):
     '''
     Function for making countplot for target column.

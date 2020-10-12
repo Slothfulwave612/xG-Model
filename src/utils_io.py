@@ -5,6 +5,7 @@ Python module for i/o operations on the dataset.
 '''
 
 ## import necessary packages/modules
+import os
 import numpy as np
 import pandas as pd
 from pandas import json_normalize
@@ -131,7 +132,7 @@ def make_event_df(match_id, path):
     
     return df
 
-def full_season_events(match_df, match_ids, path, comp_name=None, leave=True, shot=True):
+def full_season_events(match_df, match_ids, path, comp_name=None, leave=True, shot="basic"):
     '''
     Function to make event dataframe for a full season.
     
@@ -161,12 +162,12 @@ def full_season_events(match_df, match_ids, path, comp_name=None, leave=True, sh
         temp_df = make_event_df(match_id, temp_path)
         event_df = pd.concat([event_df, temp_df])
     
-    if shot:
+    if shot == "basic":
         return event_df.loc[event_df['type_name'] == 'Shot']     
-    else:
-        return event_df
+    elif shot == "intermediate":
+        return intermediate_dataset(event_df)
 
-def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season):
+def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season, shot):
     '''
     Function for making event dataframe having multile seasons 
     for the same competition.
@@ -200,7 +201,10 @@ def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_se
         comp_name_ = match_df['competition_name'].unique()[0] + '-' + match_df['season_name'].unique()[0]
 
         ## create the event dataframe for the whole season
-        temp_df = full_season_events(match_df, match_ids, path_season, comp_name=comp_name_, leave=False)
+        temp_df = full_season_events(match_df, match_ids, path_season, comp_name=comp_name_, leave=False, shot=shot)
+
+        ## add competition 
+        temp_df["comp_name"] = comp_name_
 
         ## concat the dataframes
         event_df = pd.concat([event_df, temp_df])
@@ -432,7 +436,7 @@ def get_stats(x_val, y_val):
     ## train logistic model
     log_reg = sm.Logit(y_val, x_val).fit(maxiter=1000)
 
-    return log_reg.summary()
+    return log_reg
 
 def make_df(df, cols, rows=25):
     """
@@ -456,3 +460,263 @@ def make_df(df, cols, rows=25):
     first_few = new_df.head(rows)
 
     return first_few
+
+def simple_dataset(comp_name, comp_id, season_ids, path_season, path_match, path_save, filename):
+    '''
+    Function to make a dataset for our simple-xG-model.
+
+    The dataset will have:
+        1. x and y location,
+        2. Statsbomb-xG,
+        3. Player Name,
+        4. Shot Type Name,
+        5. Body Part
+        6. Goal or No-Goal.
+
+    Arguments:
+        path_season -- str, path to the directory where event files are saved.
+        path_match -- str, path to the directory where match data file is stored for each competitions.
+        path_save -- str, path to the directory where the shot dataframe will be saved.
+    '''
+    
+    ## get event-dataframe
+    event_df = multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season, shot="basic")
+
+    ## col-list
+    col_list = ['location', 'shot_statsbomb_xg', 'player_name', "comp_name", 'shot_outcome_name', 'shot_body_part_name', 'shot_type_name']
+
+    ## shot-dataframe from event-dataframe
+    shot_df = event_df.loc[:, col_list]
+
+    ## create body part column
+    shot_df['body_part'] = shot_df['shot_body_part_name'].apply(body_part)
+
+    ## create target column - 2 classes - goal and no goal
+    shot_df['target'] = shot_df['shot_outcome_name'].apply(goal)
+
+    ## drop shot_outcome_name and shot_body_part_name column
+    shot_df.drop(['shot_outcome_name', 'shot_body_part_name'], axis=1, inplace=True)
+
+    ## filter out shots from penalties, corners and Kick Off
+    shot_df = shot_df.loc[ 
+        (shot_df["shot_type_name"] != "Penalty") &
+        (shot_df["shot_type_name"] != "Corner")  &
+        (shot_df["shot_type_name"] != "Kick Off")
+    ]
+
+    ## add x and y coordinate columns
+    shot_df['x'] = shot_df['location'].apply(coordinates_x)
+    shot_df['y'] = shot_df['location'].apply(coordinates_y)
+
+    ## drop location column
+    shot_df.drop('location', inplace=True, axis=1)
+
+    ## save the dataset
+    shot_df.to_pickle(f'{path_save}/{filename}')
+
+def intermediate_dataset(df):
+    """
+    Function for making dataframe for intermediate model(containing shots info).
+    
+    Args:
+        df (pandas.DataFrame): required dataframe.
+    
+    Returns:
+        pandas.DataFrame: dataframe for intermediate model
+    """
+    ## init an empty dictionary
+    main_dict = {
+        'x' : [], 'y': [],
+        "shot_type_name": [], "shot_body_part_name": [],
+        "player_name": [], "shot_statsbomb_xg": [], 
+        "pass_type": [], "open_goal": [],
+        "under_pressure": [], "deflected": [], "target": []
+    }
+    
+    ## fetch shots from the dataframe
+    shot_df = df.loc[
+        df["type_name"] == "Shot"
+    ].copy()
+    
+    
+    ## fetch key-pass and assists from the dataframe 
+    try:
+        pass_df = df.loc[
+            (df["pass_shot_assist"] == True) |
+            (df["pass_goal_assist"] == True)
+        ].copy().set_index("id")
+    except KeyError:
+        pass_df = df.loc[
+            (df["pass_shot_assist"] == True)
+        ].copy().set_index("id")
+    
+    for _, data in shot_df.iterrows():
+        ## ignore shots from penalties, corners and Kick Off
+        if (data["shot_type_name"] == "Penalty") or\
+           (data["shot_type_name"] == "Corner") or\
+           (data["shot_type_name"] == "Kick Off"):
+            continue
+            
+        ## fetch shot location
+        location = data["location"]
+
+        ## get x and y coordinates
+        x = coordinates_x(location)
+        y = coordinates_y(location)
+        
+        ## fetch shot_type_name
+        shot_type_name = data["shot_type_name"]
+        
+        ## fetch shot_outcome_name
+        if data["shot_outcome_name"] == "Goal":
+            target = 1
+        else:
+            target = 0
+            
+        ## fetch shot_body_part_name
+        if data["shot_body_part_name"] == "Right Foot":
+            body_part = "Foot"
+        elif data["shot_body_part_name"] == "Left Foot":
+            body_part = "Foot"
+        else:
+            body_part = data["shot_body_part_name"]
+            
+        ## fetch player name
+        player_name = data["player_name"]
+        
+        ## fetch statsbomb xG
+        stats_xg = data["shot_statsbomb_xg"]
+        
+        try:
+            ## fetch open_goal
+            if pd.isna(data["shot_open_goal"]):
+                open_goal = 0
+            else:
+                open_goal = 1
+        except Exception:
+            open_goal = 0
+        
+        ## fetch under-pressure
+        if pd.isna(data["under_pressure"]):
+            pressure = 0
+        elif data["under_pressure"] == True:
+            pressure = 1
+            
+        ## fetch deflected
+        try:
+            if pd.isna(data["shot_deflected"]):
+                deflected = 0
+            elif data["shot_deflected"] == True:
+                deflected = 1
+        except Exception:
+            deflected = 0
+        
+        ## is-assisted by a pass or not
+        if pd.isna(data["shot_key_pass_id"]):
+            pass_type = "Not Assisted"
+        else:
+            ## fetch key pass id
+            key_pass_id = data["shot_key_pass_id"]
+            
+            ## fetch data-row of the key pass
+            temp_data = pass_df.loc[key_pass_id]
+
+            ## init pass_type
+            pass_type = ""
+            
+            ## fetch through balls
+            try:
+                if temp_data["pass_technique_name"] == "Through Ball":
+                    pass_type = "Through Ball"
+            except Exception:
+                pass
+
+            ## fetch cutbacks
+            try:
+                if temp_data["pass_cut_back"] == True:
+                    pass_type = "Cut Back"
+            except Exception:
+                pass
+            
+            ## fetch cross
+            try:
+                if temp_data["pass_cross"] == True:
+                    pass_type = "Cross"
+            except Exception:
+                pass
+            
+            if pass_type == "":
+                # fetch pass_type_name
+                if temp_data["pass_type_name"] == "Corner":
+                    pass_type = "From Corner"
+                elif temp_data["pass_type_name"] == "Free Kick":
+                    pass_type = "From Free Kick"
+                else:
+                    pass_type = "Other"
+            
+    
+        ## append to dict
+        main_dict['x'].append(x)
+        main_dict['y'].append(y)
+        main_dict["shot_type_name"].append(shot_type_name)
+        main_dict["shot_body_part_name"].append(body_part)
+        main_dict["player_name"].append(player_name)
+        main_dict["shot_statsbomb_xg"].append(stats_xg)
+        main_dict["pass_type"].append(pass_type)
+        main_dict["open_goal"].append(open_goal)
+        main_dict["under_pressure"].append(pressure)
+        main_dict["deflected"].append(deflected)
+        main_dict["target"].append(target)
+    
+    return pd.DataFrame(main_dict)
+
+def make_train_test(path, path_save):
+    '''
+    Function for making and saving train and test data.
+
+    Argument:
+        path -- str, path where the shot data is stored.
+        path_save -- str, path where the data will be stored.
+    '''
+    ## load in all the datasets
+    ucl_data = pd.read_pickle(path+'/Champions_League_shots.pkl')
+    fawsl_data = pd.read_pickle(path+'/FA_Women\'s_Super_League_shots.pkl')
+    menwc_data = pd.read_pickle(path+'/FIFA_World_Cup_shots.pkl')
+    ll_data = pd.read_pickle(path+'/La_Liga_shots.pkl')
+    nwsl_data = pd.read_pickle(path+'/NWSL_shots.pkl')
+    pl_data = pd.read_pickle(path+'/Premier_League_shots.pkl')
+    wwc_data = pd.read_pickle(path+'/Women\'s_World_Cup_shots.pkl')
+
+    ## make train dataframe
+    train_df = pd.concat(
+        [
+            ll_data, 
+            ucl_data, 
+            menwc_data,  
+            pl_data,
+            nwsl_data
+        ]
+    )
+
+    ## make test dataframe
+    test_df = pd.concat(
+        [
+            fawsl_data,
+            wwc_data
+        ]
+    )
+
+    ## randomly shuffle both the datasets
+    train_df = train_df.sample(frac=1).reset_index(drop=True)
+    test_df = test_df.sample(frac=1).reset_index(drop=True)
+
+    ## check for directory
+    if os.path.isdir(path_save) == False:
+        ## make directory
+        os.mkdir(path_save)
+
+    ## save train dataframe
+    train_df.to_pickle(path_save+'/train_df.pkl')
+
+    ## save test dataframe
+    test_df.to_pickle(path_save+'/test_df.pkl')

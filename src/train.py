@@ -16,10 +16,11 @@ from . import dispatcher
 from . import scaling
 
 ## get values from script file
-TRAINING_DATA = os.environ.get('TRAINING_DATA')
-TEST_DATA = os.environ.get('TEST_DATA')
-SAVE_PATH = os.environ.get('SAVE_PATH')
-MODEL = os.environ.get('MODEL')
+TYPE = os.environ.get("TYPE")
+TRAINING_DATA = os.environ.get("TRAINING_DATA")
+TEST_DATA = os.environ.get("TEST_DATA")
+SAVE_PATH = os.environ.get("SAVE_PATH")
+MODEL = os.environ.get("MODEL")
 SCALE = os.environ.get("SCALE_TYPE")
 
 if __name__ == '__main__':
@@ -28,12 +29,12 @@ if __name__ == '__main__':
     test_df = pd.read_pickle(TEST_DATA)
 
     ## read in the datsets --> where final predicted will be appended
-    final_train = pd.read_pickle("input/basic_dataset/train_test_data/train_df.pkl")
-    final_test = pd.read_pickle("input/basic_dataset/train_test_data/test_df.pkl")
+    final_train = pd.read_pickle(f"input/{TYPE}_dataset/train_test_data/train_df.pkl")
+    final_test = pd.read_pickle(f"input/{TYPE}_dataset/train_test_data/test_df.pkl")
 
     ## drop unnecessary columns
-    x_train = train_df.drop(["shot_statsbomb_xg", "player_name", "target"], axis=1)
-    x_test = test_df.drop(["shot_statsbomb_xg", "player_name", "target"], axis=1)
+    x_train = train_df.drop(["target"], axis=1)
+    x_test = test_df.drop(["target"], axis=1)
 
     ## scale the values from train and test dataframe 
     if MODEL == "log_regg":
@@ -59,7 +60,8 @@ if __name__ == '__main__':
     y_test = test_df['target'].values
 
     ## train the model
-    clf = dispatcher.MODELS[MODEL]
+    MODELS = dispatcher.get_models(TYPE)
+    clf = MODELS[MODEL]
     clf.fit(x_train, y_train)
 
     ## predict values for train and test set
@@ -96,9 +98,9 @@ if __name__ == '__main__':
     final_train.to_pickle(SAVE_PATH + '/train_preds_' + MODEL + '.pkl')
     final_test.to_pickle(SAVE_PATH + '/test_preds_' + MODEL + '.pkl')
 
-    if os.path.isdir("models/basic_models") == False:
+    if os.path.isdir(f"models/{TYPE}_models") == False:
         ## make directory
-        os.mkdir("models/basic_models")
+        os.mkdir(f"models/{TYPE}_models")
 
     ## save the model
-    joblib.dump(clf, f'models/basic_models/{MODEL}.pkl')
+    joblib.dump(clf, f'models/{TYPE}_models/{MODEL}.pkl')

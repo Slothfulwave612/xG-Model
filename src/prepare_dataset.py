@@ -11,7 +11,8 @@ import pandas as pd
 
 from . import utils_io
 
-CAT_TYPE = str(sys.argv[1])
+TYPE = str(sys.argv[1])
+CAT_TYPE = str(sys.argv[2])
 
 def make_dataframe(path, path_save, name, drop_cols, filename):
     '''
@@ -39,11 +40,11 @@ def make_dataframe(path, path_save, name, drop_cols, filename):
 
 if __name__ == "__main__":
     ## path to the data
-    path = "input/basic_dataset/train_test_data_encoded"
+    path = f"input/{TYPE}_dataset/train_test_data_encoded"
     
     ## path where new dataset will be saved
-    path_save = 'input/basic_dataset/train_test_data_final'
-
+    path_save = f"input/{TYPE}_dataset/train_test_data_final"
+    
     if CAT_TYPE == "ohe":
         ## file names
         name_1 = 'train_ohe.pkl'
@@ -51,8 +52,13 @@ if __name__ == "__main__":
         name_2 = 'test_ohe.pkl'
         filename_2 = 'test_ohe_final.pkl'
 
-        ## drop columns
-        drop_cols = ['x', 'y', "shot_type_name", "body_part", "x0_Free Kick", "x1_Other"]
+        if TYPE == "basic":
+            ## drop columns
+            drop_cols = ['x', 'y', "player_name", "comp_name", "shot_statsbomb_xg", "x0_Free Kick", "x1_Other"]
+        
+        elif TYPE == "intermediate":
+            ## drop columns
+            drop_cols = ['x', 'y', "player_name", "comp_name", "shot_statsbomb_xg", "x0_Open Play", "x1_Foot", "x2_Not Assisted"]
 
     elif CAT_TYPE == "label":
         ## file names
@@ -62,7 +68,7 @@ if __name__ == "__main__":
         filename_2 = "test_label_final.pkl"
 
         ## drop columns
-        drop_cols = ['x', 'y']
+        drop_cols = ['x', 'y', "player_name", "comp_name", "shot_statsbomb_xg"]
 
     ## check for directory
     if os.path.isdir(path_save) == False:

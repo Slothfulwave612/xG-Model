@@ -13,33 +13,75 @@ from sklearn.pipeline import make_pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
 
-## all the models here are tuned -- see explore_experiment.ipynb 
-MODELS = {
-    "log_regg": linear_model.LogisticRegression(
-        C=0.3593813663804626,
-        penalty="l2",
-        solver="saga",
-        n_jobs=-1,
-        max_iter=200,
-        verbose=1
-    ),
+## all the models here are tuned 
 
-    "random_forest": ensemble.RandomForestClassifier(
-        criterion="entropy",
-        max_depth=5,
-        n_estimators=100,
-        min_samples_split=2,
-        n_jobs=-1,
-        verbose=1
-    ),
+def get_models(model_type):
+    """
+    Function to get the models.
 
-    "xg_boost": XGBClassifier(
-        min_child_weight=5,
-        max_depth=4,
-        learning_rate=0.05,
-        gamma=0.,
-        colsample_bytree=0.7,
-        n_jobs=-1,
-        verbosity=1
-    )
-}
+    Args:
+        model_type (str): type of the model.
+    
+    Returns:
+        model
+    """    
+    if model_type == "basic":
+        MODELS = {
+            "log_regg": linear_model.LogisticRegression(
+                C=0.3593813663804626,
+                penalty="l2",
+                solver="saga",
+                n_jobs=-1,
+                max_iter=200,
+                verbose=1
+            ),
+
+            "random_forest": ensemble.RandomForestClassifier(
+                criterion="entropy",
+                max_depth=5,
+                n_estimators=100,
+                min_samples_split=2,
+                n_jobs=-1,
+                verbose=1
+            ),
+
+            "xg_boost": XGBClassifier(
+                min_child_weight=5,
+                max_depth=4,
+                learning_rate=0.05,
+                gamma=0.,
+                colsample_bytree=0.7,
+                n_jobs=-1,
+                verbosity=1
+            )
+        }
+    
+    elif model_type == "intermediate":
+        MODELS = {
+            "log_regg": linear_model.LogisticRegression(
+                C=0.3593813663804626,
+                penalty="l2",
+                solver="liblinear"
+            ),
+
+            "random_forest": ensemble.RandomForestClassifier(
+                criterion="entropy",
+                max_depth=7,
+                min_samples_split=2,
+                n_estimators=400,
+                n_jobs=-1,
+                verbose=1
+            ),
+
+            "xg_boost": XGBClassifier(
+                min_child_weight=7,
+                max_depth=4,
+                learning_rate=0.05,
+                gamma=0.4,
+                colsample_bytree=1,
+                n_jobs=-1,
+                verbosity=1
+            )
+        }
+
+    return MODELS

@@ -8,91 +8,24 @@ Python module for creating datasets using Statsbomb open-data.
 
 ## import necessary packages/modules
 import os
+import sys
 
-from . import utils_io
+from . import utils_io as uio
 
-def simple_dataset(comp_name, comp_id, season_ids, path_season, path_match, path_save, filename):
-    '''
-    Function to make a dataset for our simple-xG-model.
+TYPE = str(sys.argv[1])
 
-    The dataset will have:
-        1. x and y location,
-        2. Statsbomb-xG,
-        3. Player Name,
-        4. Shot Type Name,
-        5. Body Part
-        6. Goal or No-Goal.
-
-    Arguments:
-        path_season -- str, path to the directory where event files are saved.
-        path_match -- str, path to the directory where match data file is stored for each competitions.
-        path_save -- str, path to the directory where the shot dataframe will be saved.
-    '''
-    
-    ## get event-dataframe
-    event_df = utils_io.multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season)
-
-    ## col-list
-    col_list = ['location', 'shot_statsbomb_xg', 'player_name', 'shot_outcome_name', 'shot_body_part_name', 'shot_type_name']
-
-    ## shot-dataframe from event-dataframe
-    shot_df = event_df.loc[:, col_list]
-
-    ## create body part column
-    shot_df['body_part'] = shot_df['shot_body_part_name'].apply(utils_io.body_part)
-
-    ## create target column - 2 classes - goal and no goal
-    shot_df['target'] = shot_df['shot_outcome_name'].apply(utils_io.goal)
-
-    ## drop shot_outcome_name and shot_body_part_name column
-    shot_df.drop(['shot_outcome_name', 'shot_body_part_name'], axis=1, inplace=True)
-
-    ## filter out shots from penalties, corners and Kick Off
-    shot_df = shot_df.loc[ 
-        (shot_df["shot_type_name"] != "Penalty") &
-        (shot_df["shot_type_name"] != "Corner")  &
-        (shot_df["shot_type_name"] != "Kick Off")
-    ]
-
-    ## add x and y coordinate columns
-    shot_df['x'] = shot_df['location'].apply(utils_io.coordinates_x)
-    shot_df['y'] = shot_df['location'].apply(utils_io.coordinates_y)
-
-    ## drop location column
-    shot_df.drop('location', inplace=True, axis=1)
-
-    ## save the dataset
-    shot_df.to_pickle(f'{path_save}/{filename}')
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     ## path where competition.json file is saved
-    path_comp='input/Statsbomb/data/competitions.json'
+    path_comp = "input/Statsbomb/data/competitions.json"
 
     ## path where event files are saved
-    path_season='input/Statsbomb/data/events'
+    path_season = "input/Statsbomb/data/events"
 
     ## path where match files are saved
-    path_match='input/Statsbomb/data/matches' 
-
-    ## check for the directory
-    if os.path.isdir('input/basic_dataset') == False:
-        ## make required directories
-        os.mkdir('input/basic_dataset')
-        os.mkdir('input/basic_dataset/all_competitions')
-        os.mkdir('input/basic_dataset/train_test_data')
-        os.mkdir('input/basic_dataset/train_test_data_encoded')
-        os.mkdir('input/basic_dataset/train_test_data_final')
-        os.mkdir('input/basic_dataset/train_test_data_result')
-
-    if os.path.isdir('input/basic_dataset/all_competitions') == False:
-        ## make required directories
-        os.mkdir('input/basic_dataset/all_competitions')
-
-    ## path where the dataset will be saved
-    path_save='input/basic_dataset/all_competitions'
+    path_match = "input/Statsbomb/data/matches"
 
     ## get competition data
-    comp_df = utils_io.get_competition(path_comp)
+    comp_df = uio.get_competition(path_comp)
 
     ## init an empty dictionary
     comp_info = dict()
@@ -102,17 +35,66 @@ if __name__ == '__main__':
         if comp_info.get(data['competition_name']) == None:
             comp_info[data['competition_name']] = data['competition_id']
 
-    for comp_name, comp_id in comp_info.items():
-        ## fetch season ids
-        season_ids = comp_df.loc[comp_df['competition_id'] == comp_id, 'season_id'].to_list()
+    if TYPE == "basic":
+        ## check for the directory
+        if os.path.isdir('input/basic_dataset') == False:
+            ## make required directories
+            os.mkdir('input/basic_dataset')
+            os.mkdir('input/basic_dataset/all_competitions')
+            os.mkdir('input/basic_dataset/train_test_data')
+            os.mkdir('input/basic_dataset/train_test_data_encoded')
+            os.mkdir('input/basic_dataset/train_test_data_final')
+            os.mkdir('input/basic_dataset/train_test_data_result')
 
-        ## save shot-dataframe
-        simple_dataset(
-            comp_name=comp_name,
-            comp_id=comp_id,
-            season_ids=season_ids,
-            path_season=path_season,
-            path_match=path_match,
-            path_save=path_save,
-            filename=comp_name.replace(' ', '_') + '_shots.pkl'
-        )
+        if os.path.isdir('input/basic_dataset/all_competitions') == False:
+            ## make required directories
+            os.mkdir('input/basic_dataset/all_competitions')
+
+        ## path where the dataset will be saved
+        path_save='input/basic_dataset/all_competitions'
+
+        for comp_name, comp_id in comp_info.items():
+            ## fetch season ids
+            season_ids = comp_df.loc[comp_df['competition_id'] == comp_id, 'season_id'].to_list()
+
+            ## save shot-dataframe
+            uio.simple_dataset(
+                comp_name=comp_name,
+                comp_id=comp_id,
+                season_ids=season_ids,
+                path_season=path_season,
+                path_match=path_match,
+                path_save=path_save,
+                filename=comp_name.replace(' ', '_') + '_shots.pkl'
+            )
+    
+    elif TYPE == "intermediate":
+        ## check for the directory
+        if os.path.isdir('input/intermediate_dataset') == False:
+            ## make required directories
+            os.mkdir('input/intermediate_dataset')
+            os.mkdir('input/intermediate_dataset/all_competitions')
+            os.mkdir('input/intermediate_dataset/train_test_data')
+            os.mkdir('input/intermediate_dataset/train_test_data_encoded')
+            os.mkdir('input/intermediate_dataset/train_test_data_final')
+            os.mkdir('input/intermediate_dataset/train_test_data_result')
+
+        if os.path.isdir('input/intermediate_dataset/all_competitions') == False:
+            ## make required directories
+            os.mkdir('input/intermediate_dataset/all_competitions')
+        
+        ## path where the dataset will be saved
+        path_save='input/intermediate_dataset/all_competitions'
+
+        for comp_name, comp_id in comp_info.items():
+            ## fetch season ids
+            season_ids = comp_df.loc[comp_df['competition_id'] == comp_id, 'season_id'].to_list()
+
+            ## get event-dataframe
+            shot_df = uio.multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season, shot="intermediate")
+
+            ## filename for saving
+            filename = comp_name.replace(' ', '_') + "_shots.pkl"
+
+            ## save the dataset
+            shot_df.to_pickle(f'{path_save}/{filename}')
