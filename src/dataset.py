@@ -34,25 +34,25 @@ if __name__ == "__main__":
     for _, data in comp_df.iterrows():
         if comp_info.get(data['competition_name']) == None:
             comp_info[data['competition_name']] = data['competition_id']
+        
+    ## check for the directory
+    if os.path.isdir(f"input/{TYPE}_dataset") == False:
+        ## make required directories
+        os.mkdir(f"input/{TYPE}_dataset")
+        os.mkdir(f"input/{TYPE}_dataset/all_competitions")
+        os.mkdir(f"input/{TYPE}_dataset/train_test_data")
+        os.mkdir(f"input/{TYPE}_dataset/train_test_data_encoded")
+        os.mkdir(f"input/{TYPE}_dataset/train_test_data_final")
+        os.mkdir(f"input/{TYPE}_dataset/train_test_data_result")
+
+    if os.path.isdir(f"input/{TYPE}_dataset/all_competitions") == False:
+        ## make required directories
+        os.mkdir(f"input/{TYPE}_dataset/all_competitions")
+    
+    ## path where the dataset will be saved
+    path_save = f"input/{TYPE}_dataset/all_competitions"
 
     if TYPE == "basic":
-        ## check for the directory
-        if os.path.isdir('input/basic_dataset') == False:
-            ## make required directories
-            os.mkdir('input/basic_dataset')
-            os.mkdir('input/basic_dataset/all_competitions')
-            os.mkdir('input/basic_dataset/train_test_data')
-            os.mkdir('input/basic_dataset/train_test_data_encoded')
-            os.mkdir('input/basic_dataset/train_test_data_final')
-            os.mkdir('input/basic_dataset/train_test_data_result')
-
-        if os.path.isdir('input/basic_dataset/all_competitions') == False:
-            ## make required directories
-            os.mkdir('input/basic_dataset/all_competitions')
-
-        ## path where the dataset will be saved
-        path_save='input/basic_dataset/all_competitions'
-
         for comp_name, comp_id in comp_info.items():
             ## fetch season ids
             season_ids = comp_df.loc[comp_df['competition_id'] == comp_id, 'season_id'].to_list()
@@ -68,30 +68,27 @@ if __name__ == "__main__":
                 filename=comp_name.replace(' ', '_') + '_shots.pkl'
             )
     
-    elif TYPE == "intermediate":
-        ## check for the directory
-        if os.path.isdir('input/intermediate_dataset') == False:
-            ## make required directories
-            os.mkdir('input/intermediate_dataset')
-            os.mkdir('input/intermediate_dataset/all_competitions')
-            os.mkdir('input/intermediate_dataset/train_test_data')
-            os.mkdir('input/intermediate_dataset/train_test_data_encoded')
-            os.mkdir('input/intermediate_dataset/train_test_data_final')
-            os.mkdir('input/intermediate_dataset/train_test_data_result')
-
-        if os.path.isdir('input/intermediate_dataset/all_competitions') == False:
-            ## make required directories
-            os.mkdir('input/intermediate_dataset/all_competitions')
-        
-        ## path where the dataset will be saved
-        path_save='input/intermediate_dataset/all_competitions'
-
+    elif TYPE == "intermediate":    
         for comp_name, comp_id in comp_info.items():
             ## fetch season ids
             season_ids = comp_df.loc[comp_df['competition_id'] == comp_id, 'season_id'].to_list()
 
             ## get event-dataframe
             shot_df = uio.multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season, shot="intermediate")
+
+            ## filename for saving
+            filename = comp_name.replace(' ', '_') + "_shots.pkl"
+
+            ## save the dataset
+            shot_df.to_pickle(f'{path_save}/{filename}')
+    
+    elif TYPE == "advance":       
+        for comp_name, comp_id in comp_info.items():
+            ## fetch season ids
+            season_ids = comp_df.loc[comp_df['competition_id'] == comp_id, 'season_id'].to_list()
+
+            ## get event-dataframe
+            shot_df = uio.multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season, shot="advance")
 
             ## filename for saving
             filename = comp_name.replace(' ', '_') + "_shots.pkl"

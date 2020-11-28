@@ -8,7 +8,7 @@ Python module for i/o operations on the dataset.
 import os
 import numpy as np
 import pandas as pd
-from pandas import json_normalize
+from pandas.io.json import json_normalize
 import json
 import math
 import multiprocessing
@@ -160,12 +160,14 @@ def full_season_events(match_df, match_ids, path, comp_name=None, leave=True, sh
         temp_path = path + f'/{match_id}.json'
 
         temp_df = make_event_df(match_id, temp_path)
-        event_df = pd.concat([event_df, temp_df])
+        event_df = pd.concat([event_df, temp_df], sort=False)
     
     if shot == "basic":
         return event_df.loc[event_df['type_name'] == 'Shot']     
     elif shot == "intermediate":
         return intermediate_dataset(event_df)
+    elif shot == "advance":
+        return intermediate_dataset(event_df, adv=True)
 
 def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_season, shot):
     '''
@@ -207,7 +209,7 @@ def multiple_season_event_df(comp_name, comp_id, season_ids, path_match, path_se
         temp_df["comp_name"] = comp_name_
 
         ## concat the dataframes
-        event_df = pd.concat([event_df, temp_df])
+        event_df = pd.concat([event_df, temp_df], sort=False)
     
     ## make final dataframe
     event_df = event_df.reset_index(drop=True)
@@ -315,25 +317,6 @@ def post_angle(x, y, g1_x=104, g1_y=30.34, g2_x=104, g2_y=37.66):
     angle = np.degrees(np.arccos(value))
     
     return angle 
-
-def post_vertical_angle(x, y):
-    """
-    Function to calculate vertical-post angle.
-
-    Args:
-        x (float)): x-coordinate value
-        y (float): y-coordinate value
-
-    Returns:
-        float -- vertical-post angle.
-    """  
-    ## calculate distance
-    dis = distance_bw_coordinates(x, y)
-
-    if dis == 0:
-        return 90
-    
-    return np.degrees(np.arctan(2.4 / dis))
 
 def create_result_df(df, length, col):    
     '''
@@ -461,6 +444,103 @@ def make_df(df, cols, rows=25):
 
     return first_few
 
+
+def area(x1, y1, x2, y2, x3, y3): 
+    """
+    Funtion to calculate area of triangle.
+
+    Args:
+        float: coordinates for triangle vertices.
+
+    Returns:
+        float: area of the triangle.
+    """    
+    return abs((x1 * (y2 - y3) + x2 * (y3 - y1)  
+                + x3 * (y1 - y2)) / 2.0) 
+
+def is_inside(player_coord_x, player_coord_y, shot_location_x, shot_location_y, pole_1_x=104.0, pole_1_y=30.34, pole_2_x=104.0, pole_2_y=37.66):
+    """
+    Function to return whether player is between the player taking shot and goal.
+
+    Args:
+        player_coord_x (float): player-coordinate-x.
+        player_coord_y (float): player-coordinate-y.
+        shot_location_x (float): shot-coordinate-x.
+        shot_location_y (float): shot-coordinate-y.
+        pole_1_x (float, optional): goal-post(1) coordinate x. Defaults to 104.0.
+        pole_1_y (float, optional): goal-post(1) coordinate y. Defaults to 30.34.
+        pole_2_x (float, optional): goal-post(2) coordinate x. Defaults to 104.0.
+        pole_2_y (float, optional): goal-post(2) coordinate x. Defaults to 37.66.
+    
+    Returns:
+        bool: True if present else False.
+    """    
+    # calculate area of triangle ABC 
+    A = area(shot_location_x, shot_location_y, pole_1_x, pole_1_y, pole_2_x, pole_2_y) 
+  
+    # calculate area of triangle PBC  
+    A1 = area(player_coord_x, player_coord_y, pole_1_x, pole_1_y, pole_2_x, pole_2_y) 
+      
+    # calculate area of triangle PAC  
+    A2 = area(player_coord_x, player_coord_y, shot_location_x, shot_location_y, pole_2_x, pole_2_y) 
+      
+    # calculate area of triangle PAB  
+    A3 = area(player_coord_x, player_coord_y, shot_location_x, shot_location_y, pole_1_x, pole_1_y) 
+      
+    # check if sum of A1, A2 and A3  
+    # is same as A 
+    if round(A,2) == round(A1 + A2 + A3, 2): 
+        return True
+    else: 
+        return False
+
+def freeze_frame_vars(freeze_frame, shot_location_x, shot_location_y):
+    """
+    Function for making freeze frame variables.
+
+    Args:
+        freeze_frame (list): containing tracking information.
+        shot_location_x (float): shot coordinate location x.
+        shot_location_y (float): shot coordinate location y.
+
+    Returns:
+        float values: 1. number of teammates between goal and shot-location.
+                      2. number of opponents(excluding goalkeeper) between goal and shot-location.
+                      3. goalkeeper covering angle.
+                      4. distance between goalkeeper and the goal.
+                      5. distance between goalkeeper and the shot-location.
+    """    
+    ## init two variable to 0
+    count_teammate, count_opponent, goal_keeper_angle, dis_goal_keeper, dis_shot_keeper = 0, 0, 0, 0, 0
+
+    ## traverse the freeze frame
+    for frame in freeze_frame:
+        ## fetch coodinate location of the players
+        x_coord = coordinates_x(frame["location"])
+        y_coord = coordinates_y(frame["location"])
+
+        ## fetch player's position
+        position = frame["position"]["name"]
+
+        if position != "Goalkeeper":
+            if frame["teammate"] == True and is_inside(x_coord, y_coord, shot_location_x, shot_location_y):
+                count_teammate += 1
+            
+            elif frame["teammate"] == False and is_inside(x_coord, y_coord, shot_location_x, shot_location_y):
+                count_opponent += 1
+        else:
+            ## compute goalkeeper covering angle
+            goal_keeper_angle = post_angle(x_coord, y_coord)
+
+            ## compute distance between goalkeeper and goal
+            dis_goal_keeper = distance_bw_coordinates(x_coord, y_coord)
+
+            ## compute distance between goalkeeper and shot-location
+            dis_shot_keeper = distance_bw_coordinates(x_coord, y_coord, shot_location_x, shot_location_y)
+    
+    return count_teammate, count_opponent, goal_keeper_angle, dis_goal_keeper, dis_shot_keeper
+
+
 def simple_dataset(comp_name, comp_id, season_ids, path_season, path_match, path_save, filename):
     '''
     Function to make a dataset for our simple-xG-model.
@@ -514,24 +594,35 @@ def simple_dataset(comp_name, comp_id, season_ids, path_season, path_match, path
     ## save the dataset
     shot_df.to_pickle(f'{path_save}/{filename}')
 
-def intermediate_dataset(df):
+def intermediate_dataset(df, adv=False):
     """
     Function for making dataframe for intermediate model(containing shots info).
     
     Args:
         df (pandas.DataFrame): required dataframe.
+        adv (bool, optional): for preparing advanced dataset.
     
     Returns:
         pandas.DataFrame: dataframe for intermediate model
     """
     ## init an empty dictionary
-    main_dict = {
-        'x' : [], 'y': [],
-        "shot_type_name": [], "shot_body_part_name": [],
-        "player_name": [], "shot_statsbomb_xg": [], 
-        "pass_type": [], "open_goal": [],
-        "under_pressure": [], "deflected": [], "target": []
-    }
+    if adv == True:
+        main_dict = {
+            'x' : [], 'y': [],
+            "shot_type_name": [], "shot_body_part_name": [],
+            "player_name": [], "shot_statsbomb_xg": [], 
+            "pass_type": [], "open_goal": [],
+            "under_pressure": [], "deflected": [], "player_in_between": [],
+            "goal_keeper_angle": [], "target": []
+        }
+    else:
+        main_dict = {
+            'x' : [], 'y': [],
+            "shot_type_name": [], "shot_body_part_name": [],
+            "player_name": [], "shot_statsbomb_xg": [], 
+            "pass_type": [], "open_goal": [],
+            "under_pressure": [], "deflected": [],  "target": []
+        }
     
     ## fetch shots from the dataframe
     shot_df = df.loc[
@@ -563,7 +654,20 @@ def intermediate_dataset(df):
         ## get x and y coordinates
         x = coordinates_x(location)
         y = coordinates_y(location)
-        
+
+        if adv == True:
+            ## fetch freeze frame
+            freeze_frame = data["shot_freeze_frame"]
+            
+            ## calculate freeze-frame-variables
+            count_teammate, count_opponent, goal_keeper_angle, dis_goal_keeper, dis_shot_keeper = freeze_frame_vars(
+                freeze_frame, x, y
+            )
+
+            ## append info to main-dict for advanced features
+            main_dict["player_in_between"].append(count_teammate + count_opponent)
+            main_dict["goal_keeper_angle"].append(goal_keeper_angle) 
+
         ## fetch shot_type_name
         shot_type_name = data["shot_type_name"]
         
@@ -667,7 +771,7 @@ def intermediate_dataset(df):
         main_dict["under_pressure"].append(pressure)
         main_dict["deflected"].append(deflected)
         main_dict["target"].append(target)
-    
+
     return pd.DataFrame(main_dict)
 
 def make_train_test(path, path_save):

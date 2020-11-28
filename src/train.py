@@ -12,8 +12,7 @@ import joblib
 from sklearn import preprocessing
 from sklearn import metrics
 
-from . import dispatcher
-from . import scaling
+from . import dispatcher, scaling
 
 ## get values from script file
 TYPE = os.environ.get("TYPE")
@@ -38,18 +37,28 @@ if __name__ == '__main__':
 
     ## scale the values from train and test dataframe 
     if MODEL == "log_regg":
+        ## scaling columns
+        if TYPE == "advance":
+            cols = [
+                "angle", "distance", "player_in_between", "goal_keeper_angle"
+            ]
+        else:
+            cols = [
+                "angle", "distance"
+            ]
+
         ## for train data
         scale_1 = scaling.Scale(
             df = x_train,
             scale_type = SCALE,
-            cols = ["angle", "distance"]
+            cols = cols
         )
 
         ## for test data
         scale_2 = scaling.Scale(
             df = x_test,
             scale_type = SCALE,
-            cols = ["angle", "distance"]
+            cols = cols
         )
 
         x_train = scale_1.fit_transform()

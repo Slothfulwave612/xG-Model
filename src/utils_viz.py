@@ -5,6 +5,7 @@ __author__: slothfulwave612
 ## required packages/modules
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Arc
 import matplotlib as mpl
 from matplotlib import cm
 from matplotlib import colors
@@ -19,7 +20,7 @@ class Pitch:
     Pitch Dimensions: 104x64 (in meters)
     '''
     
-    def __init__(self, line_color='#000000', pitch_color='#FFFFFF', orientation='horizontal', figsize_x=10.4, figsize_y=6.8):
+    def __init__(self, line_color="#000000", pitch_color="#FFFFFF", orientation="horizontal", half=False, plot_arrow=True):
         '''
         Function to initialize the class object.
         
@@ -28,52 +29,50 @@ class Pitch:
             line_color -- str, color of the lines. Default: '#000000'
             pitch_color -- str, color of the pitch-map. Default: '#FFFFFF'
             orientation -- str, pitch orientation 'horizontal' or 'vertical'. Default: 'horizontal'
+            half 
         '''
         
         self.line_color = line_color
         self.pitch_color = pitch_color
         self.orientation = orientation
+        self.half = half
+        self.plot_arrow = plot_arrow
         
         ## figsize
-        self.figsize_x = figsize_x              ## x-axis length
-        self.figsize_y = figsize_y              ## y-axis length
+        self.figsize_x = 25             ## x-axis length
+        self.figsize_y = 12             ## y-axis length
         
         ## pitch outfield lines
         self.pitch_dims = [
-            [0, 104, 104, 0, 0],                ## x-axis
-            [0, 0, 68, 68, 0]                   ## y-axis
+            [0, 104, 104, 0, 0],           ## x-axis
+            [0, 0, 68, 68, 0]              ## y-axis
         ]
         
         self.dims_x = [
-            [104, 87.5, 87.5, 104],             ## right-side penalty box(x-axis)
-            [0, 16.5, 16.5, 0],                 ## left-side penalty box(x-axis)
-            [104, 104.2, 104.2, 104],           ## right-side goal post(x-axis)
-            [0, -0.2, -0.2, 0],                 ## left-side goal post(x-axis)
-            [104, 99.5, 99.5, 104],             ## right-side 6-yard-box(x-axis)
-            [0, 4.5, 4.5, 0]                    ## left-side 6-yard-box(x-axis)
+            [104, 87.5, 87.5, 104],        ## right-side penalty box(x-axis)
+            [0, 16.5, 16.5, 0],            ## left-side penalty box(x-axis)
+            [104, 104.2, 104.2, 104],      ## right-side goal post(x-axis)
+            [0, -0.2, -0.2, 0],            ## left-side goal post(x-axis)
+            [104, 99.5, 99.5, 104],        ## right-side 6-yard-box(x-axis)
+            [0, 4.5, 4.5, 0]               ## left-side 6-yard-box(x-axis)
         ]
         
         self.dims_y = [
-            [13.84, 13.84, 54.16, 54.16],       ## right-side penalty box(y-axis)
-            [13.84, 13.84, 54.16, 54.16],       ## left-side penalty box(y-axis)
-            [30.34, 30.34, 37.66, 37.66],       ## right-side goal post(y-axis)
-            [30.34, 30.34, 37.66, 37.66],       ## left-side goal post(y-axis)
-            [24.84, 24.84, 43.16, 43.16],       ## right-side 6-yard-box(y-axis)
-            [24.84, 24.84, 43.16, 43.16]        ## left-side 6-yard-box(y-axis)
+            [13.84, 13.84, 54.16, 54.16],  ## right-side penalty box(y-axis)
+            [13.84, 13.84, 54.16, 54.16],  ## left-side penalty box(y-axis)
+            [30.34, 30.34, 37.66, 37.66],  ## right-side goal post(y-axis)
+            [30.34, 30.34, 37.66, 37.66],  ## left-side goal post(y-axis)
+            [24.84, 24.84, 43.16, 43.16],  ## right-side 6-yard-box(y-axis)
+            [24.84, 24.84, 43.16, 43.16]   ## left-side 6-yard-box(y-axis)
         ]
         
-        self.half_x = [52, 52]                  ## halfway line x-axis
-        self.half_y = [0, 68]                   ## halfway line y-axis
+        self.half_x = [52, 52]             ## halfway line x-axis
+        self.half_y = [0, 68]              ## halfway line y-axis
         
-        self.scatter_x = [93, 10.5, 52]         ## penalty and kick off spot(x-axis)
-        self.scatter_y = [34, 34, 34]           ## penalty and kick off spot(y-axis)
+        self.scatter_x = [93, 10.5, 52]    ## penalty and kick off spot(x-axis)
+        self.scatter_y = [34, 34, 34]      ## penalty and kick off spot(y-axis)
         
-        self.rect_x = [87.5, 0]                 ## rectangle (x-axis)
-        self.rect_y = [20, 20]                  ## rectange (y-axis)
-        
-        self.rect = [16.5, 24]                  ## rectangle for drawing arc
-        
-    def create_pitch(self, zorder_line=3, fill_rect=None, length=None, bredth=None):
+    def create_pitch(self, zorder_line=3, figax=None):
         '''
         Function to create pitch-map.
         
@@ -108,26 +107,18 @@ class Pitch:
             spot_x = self.scatter_x
             spot_y = self.scatter_y
             
-            ## x and y coordinate for rectangle
-            r_x = self.rect_x
-            r_y = self.rect_y
-            
-            ## rectangle for horizontal orientation
-            r_o = self.rect
-                
-            if length == None:
-                length = 124
-            
-            if bredth == None:
-                bredth = 95
             
         elif self.orientation == 'vertical':
             ## figsize
             sx, sy = self.figsize_y, self.figsize_x
             
             ## x and y coordinates for pitch outline
-            pitch_dims_x = self.pitch_dims[1]
-            pitch_dims_y = self.pitch_dims[0]
+            if self.half == False:
+                pitch_dims_x = self.pitch_dims[1]
+                pitch_dims_y = self.pitch_dims[0]
+            else:
+                pitch_dims_x = [0, 0, 68, 68]
+                pitch_dims_y = [52, 104, 104, 52]
             
             ## x and y coordinates for halfway line
             half_x = self.half_y
@@ -140,85 +131,76 @@ class Pitch:
             ## x and y coordinate for spots
             spot_x = self.scatter_y
             spot_y = self.scatter_x 
-            
-            ## x and y coordinate for rectangle
-            r_x = self.rect_y
-            r_y = self.rect_x
-            
-            ## rectangle for vertical orientation
-            r_o = self.rect[::-1]
-                
-            if length == None:
-                length = 95
-            
-            if bredth == None:
-                bredth = 124
         
         else:
             raise Exception('Orientation not understood!!!')
         
-        if fill_rect == None:
-            fill_rect = [-5, -10]
-        
-        ## create subplot
-        fig, ax = plt.subplots(figsize=(sx, sy), facecolor=self.pitch_color)
-        ax.set_facecolor(self.pitch_color)
-    
+        if figax == None:
+            ## create subplot
+            fig, ax = plt.subplots(figsize=(sx, sy), facecolor=self.pitch_color)
+            ax.set_facecolor(self.pitch_color)
+            ax.set_aspect("equal")
+        else:
+            fig, ax = figax[0], figax[1]
+
         ## plot outfield lines
         ax.plot(pitch_dims_x, pitch_dims_y, color=self.line_color, zorder=zorder_line)
         
         ## plot right side penalty box
-        ax.plot(x_coord[0], y_coord[0], color=self.line_color, zorder=zorder_line)
-        
-        ## plot left side penalty box
-        ax.plot(x_coord[1], y_coord[1], color=self.line_color, zorder=zorder_line)
+        ax.plot(x_coord[0], y_coord[0], color=self.line_color, zorder=zorder_line)            
         
         ## plot right side goal post
-        ax.plot(x_coord[2], y_coord[2], color=self.line_color, zorder=zorder_line)
-        
-        ## plot left side goal post
-        ax.plot(x_coord[3], y_coord[3], color=self.line_color, zorder=zorder_line)
+        ax.plot(x_coord[2], y_coord[2], color=self.line_color, zorder=zorder_line)                
         
         ## right hand 6 yard box
-        ax.plot(x_coord[4], y_coord[4], color=self.line_color, zorder=zorder_line)
-        
-        ## left side 6 yard box
-        ax.plot(x_coord[5], y_coord[5], color=self.line_color, zorder=zorder_line)
+        ax.plot(x_coord[4], y_coord[4], color=self.line_color, zorder=zorder_line)                
         
         ## plot halfway line
         ax.plot(half_x, half_y, color=self.line_color, zorder=zorder_line)
+
+        if self.half == False:
+            ## plot left side penalty box
+            ax.plot(x_coord[1], y_coord[1], color=self.line_color, zorder=zorder_line)
+
+            ## plot left side goal post
+            ax.plot(x_coord[3], y_coord[3], color=self.line_color, zorder=zorder_line)
+
+            ## left side 6 yard box
+            ax.plot(x_coord[5], y_coord[5], color=self.line_color, zorder=zorder_line)
+
+            ## kick-off spot
+            ax.scatter(spot_x[1], spot_y[1], color=self.line_color, s=5, zorder=zorder_line)
         
         ## plot penalty and kick-off spot
-        ax.scatter(spot_x[0], spot_y[0], color=self.line_color, zorder=zorder_line)
-        ax.scatter(spot_x[1], spot_y[1], color=self.line_color, zorder=zorder_line)
-        ax.scatter(spot_x[2], spot_y[2], color=self.line_color, zorder=zorder_line)
+        ax.scatter(spot_x[0], spot_y[0], color=self.line_color, s=5, zorder=zorder_line)
+        ax.scatter(spot_x[2], spot_y[2], color=self.line_color, s=5, zorder=zorder_line)
         
-        ## plot reqired circles and arcs
-        circle_1 = plt.Circle((spot_x[0], spot_y[0]), 9.15, ls='solid', lw=1.5, color=self.line_color, 
-                             fill=False, zorder=zorder_line-1)
-        circle_2 = plt.Circle((spot_x[1], spot_y[1]), 9.15, ls='solid', lw=1.5, color=self.line_color, 
-                             fill=False, zorder=zorder_line-1)
-        circle_3 = plt.Circle((spot_x[2], spot_y[2]), 9.15, ls='solid', lw=1.5, color=self.line_color, 
-                             fill=False, zorder=zorder_line-1)
+        if self.half == False:
+            ## plot center circle
+            circle = plt.Circle((spot_x[2], spot_y[2]), 9.15, lw=1.5, color=self.line_color, 
+                                fill=False, zorder=zorder_line)
+            ax.add_patch(circle)
+        else:
+            ## draw center arc
+            arc = Arc(xy=(34, 52), height=18.5, width=18.5, angle=90, theta1=270, theta2=90, color=self.line_color, zorder=zorder_line)
+            ax.add_patch(arc)
+
+        ## adding arcs
+        if self.orientation == "horizontal":
+            arc_left = Arc(xy=(10.5, 34), height=18.5, width=18.5, angle=0, theta1=310, theta2=50, color=self.line_color, zorder=zorder_line)
+            arc_right = Arc(xy=(93.5, 34), height=18.5, width=18.5, angle=0, theta1=130, theta2=230, color=self.line_color, zorder=zorder_line)
+
+            ax.add_patch(arc_left)
+            ax.add_patch(arc_right)
         
-        ## add circles
-        ax.add_artist(circle_1)
-        ax.add_artist(circle_2)
-        ax.add_artist(circle_3)
-        
-        ## add two rectangles to make arcs
-        rect_1 = plt.Rectangle((r_x[0], r_y[0]), r_o[0], r_o[1], ls='-', 
-                               color=self.pitch_color, zorder=zorder_line-1)
-        rect_2 = plt.Rectangle((r_x[1], r_y[1]), r_o[0], r_o[1], ls='-', 
-                               color=self.pitch_color, zorder=zorder_line-1)
-        ax.add_artist(rect_1)
-        ax.add_artist(rect_2)
-        
-        # add ractangle to fill in the color
-        rect_3 = plt.Rectangle((fill_rect[0], fill_rect[1]), length, bredth, 
-                               color=self.pitch_color, zorder=zorder_line-2)
-        ax.add_artist(rect_3)
-        
+        elif self.orientation == "vertical":
+            if self.half == False:
+                arc_bottom = Arc(xy=(34, 10.5), height=18.5, width=18.5, angle=90, theta1=310, theta2=50, color=self.line_color, zorder=zorder_line)
+                ax.add_patch(arc_bottom)
+
+            arc_top = Arc(xy=(34, 93.5), height=18.5, width=18.5, angle=90, theta1=130, theta2=230, color=self.line_color, zorder=zorder_line)
+            ax.add_patch(arc_top)
+
         ## tidy axis
         ax.axis('off')
         
@@ -235,7 +217,7 @@ def xG_plot(df, col, title, path=None):
         path (str, optional): path where file will be saved. Defaults to None.
     """    
     ## create pitchmap
-    pitch_train_real = Pitch(line_color='red', figsize_x=20.8, figsize_y=13.6)
+    pitch_train_real = Pitch(line_color='red')
     fig, ax = pitch_train_real.create_pitch()
 
     ax.text(
@@ -262,7 +244,7 @@ def xG_plot(df, col, title, path=None):
                         marker='o', cmap=cmap, ec='#000000', lw=0.3, zorder=4)
 
     ## add colorbar
-    fraction = 0.029
+    fraction = 0.02
     norm = mpl.colors.Normalize(vmin=0, vmax=1)
     ax.figure.colorbar(
                 mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
@@ -270,7 +252,7 @@ def xG_plot(df, col, title, path=None):
 
     ## name to the color bar
     ax.text(
-        111, -2,
+        111, -1,
         "xG Value",
         color="#121212",
         fontsize=25,

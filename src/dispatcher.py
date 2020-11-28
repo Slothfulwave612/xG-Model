@@ -84,4 +84,28 @@ def get_models(model_type):
             )
         }
 
+    elif model_type == "advance":
+        MODELS = {
+            "log_regg": linear_model.LogisticRegression(
+                C=0.3593813663804626,
+                penalty="l2",
+                solver="lbfgs"
+            ),
+
+            "random_forest": ensemble.RandomForestClassifier(
+                criterion="entropy",
+                max_depth=7,
+                min_samples_split=2,
+                n_estimators=100
+            ),
+
+            "xg_boost": XGBClassifier(
+                min_child_weight=5,
+                max_depth=3,
+                learning_rate=0.1,
+                gamma=0.3,
+                colsample_bytree=0.3
+            )
+        }
+
     return MODELS

@@ -56,7 +56,7 @@ if __name__ == "__main__":
             ## drop columns
             drop_cols = ['x', 'y', "player_name", "comp_name", "shot_statsbomb_xg", "x0_Free Kick", "x1_Other"]
         
-        elif TYPE == "intermediate":
+        elif TYPE == "intermediate" or TYPE == "advance":
             ## drop columns
             drop_cols = ['x', 'y', "player_name", "comp_name", "shot_statsbomb_xg", "x0_Open Play", "x1_Foot", "x2_Not Assisted"]
 

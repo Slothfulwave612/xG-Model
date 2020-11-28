@@ -171,7 +171,7 @@ if __name__ == "__main__":
         ## categorical columns
         cols = ["shot_type_name", "body_part"]
     
-    elif TYPE == "intermediate":
+    elif TYPE == "intermediate" or TYPE == "advance":
         ## categorical columns
         cols = ["shot_type_name", "shot_body_part_name", "pass_type"]
 
