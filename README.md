@@ -3,17 +3,18 @@
 ## Content
 
 * [Directory Tree](#directory-tree)
-
 * [Overview](#overview)
-
-* [What is xG](#what-is-xg)
-
+* [What is xG?](#what-is-xg)
 * [How xG is used?](#how-xg-is-used)
-
 * [xG Model](#xg-model)
-  * [Simple Dataset](#simple-dataset)
-    * [Steps to Run the script](#steps-to-run-the-script)
-    * [Evaluating The Results](#evaluating-the-results)
+  * [Basic Model](#basic-model)
+  * [Intermediate Model](#intermediate-model)
+  * [Advance Model](#advance-model)
+* [Steps to run the script](#steps-to-run-the-script)
+* [How to plot?](#how-to-plot)
+* [Reviewing the basic model](#reviewing-the-basic-model)
+* [Reviewing the intermediate model](#reviewing-the-intermediate-model)
+* [Reviewing the advance model](#reviewing-the-advance-model)
  
 ## Directory Tree
 
@@ -70,7 +71,7 @@
 
 * Here, in this project I have tried to build an xG Model from scratch using machine learning algorithms.
 
-## What is Expected-Goals (xG)?
+## What is xG?
 
 * In layman's term, xG (or expected goals) is the **probability** that a shot will result in a goal based on the characteristics of that shot.
 
@@ -191,7 +192,7 @@
   
 * The machine learning algorithms implemented for making the models are: **Logistic Regression**, **Random Forest** and **xG Boost**(eXtreme Gradient Boosting).
 
-## Steps to Run the script
+## Steps to run the script
 
 * To execute all the scripts in one go I have created **run.sh** file, on executing it will create the required datasets, train and test the model and save the required model and corresponding categorical features.
 
@@ -275,6 +276,41 @@ sh run.sh "basic" "xg_boost" "none" "False" "False"
 * And finally we will plot the aggregated xG values. Execute the cells in *aggregated xG values* by providing the right path. 
 
 * One can run similarly plot for other models as well (i.e. for *intermediate* and *advance* model) but make sure to run or have the models for *intermediate* or *advance* before plotting for the same.
+  
+## Reviewing the basic model
 
+* To review the basic model for all three machine learning algorithms used I made a table for top 25 players with the most number of goals for both train and test dataset.
 
-## Revie
+* Let's see how the table looks like for the train dataset([link](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/basic_model/train_simple.png)):
+
+  ![train_basic_table](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/basic_model/train_simple.png)
+  
+* Table for test dataset([link](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/basic_model/test_simple.png))  :
+  
+  ![test_basic_table](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/basic_model/test_simple.png)
+  
+* To see all the plots visit [this](https://github.com/Slothfulwave612/xG-Model/tree/master/plots/basic_model).
+
+## Reviewing the intermediate model
+
+* Table for train dataset([link](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/intermediate_model/train_simple.png)):
+
+  ![train_basic_table](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/intermediate_model/train_simple.png)
+  
+* Table for test dataset([link](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/intermediate_model/test_simple.png))  :
+  
+  ![test_basic_table](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/intermediate_model/test_simple.png)
+  
+* To see all the plots visit [this](https://github.com/Slothfulwave612/xG-Model/tree/master/plots/intermediate_model).
+
+## Reviewing the advance model
+
+* Table for train dataset([link](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/advance_model/train_simple.png)):
+
+  ![train_basic_table](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/advance_model/train_simple.png)
+  
+* Table for test dataset([link](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/advance_model/test_simple.png))  :
+  
+  ![test_basic_table](https://github.com/Slothfulwave612/xG-Model/blob/master/plots/advance_model/test_simple.png)
+  
+* To see all the plots visit [this](https://github.com/Slothfulwave612/xG-Model/tree/master/plots/advance_model1).
